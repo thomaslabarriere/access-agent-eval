@@ -1,4 +1,5 @@
-import { writeFile } from "node:fs/promises";
+import { writeFile, mkdir } from "node:fs/promises";
+import { dirname } from "node:path";
 import { AccessAgent, Scorecard } from "./types.js";
 import { scenarios } from "./scenarios/scenarios.js";
 import { runScenarios } from "./runner.js";
@@ -29,6 +30,14 @@ const DEFAULT_MODEL: Record<Provider, string> = {
 function getFlag(args: string[], name: string): string | undefined {
   const i = args.indexOf(`--${name}`);
   return i >= 0 && i + 1 < args.length ? args[i + 1] : undefined;
+}
+
+/** Write JSON output, creating the target directory if needed. */
+async function writeOut(out: string, data: unknown): Promise<void> {
+  const dir = dirname(out);
+  if (dir && dir !== ".") await mkdir(dir, { recursive: true });
+  await writeFile(out, JSON.stringify(data, null, 2), "utf8");
+  console.log(`\nScorecard written to ${out}`);
 }
 
 function usage(): void {
@@ -109,8 +118,7 @@ async function main(): Promise<void> {
       );
     }
     const card = await evalAgent(agent, undefined);
-    await writeFile(out, JSON.stringify(card, null, 2), "utf8");
-    console.log(`\nScorecard written to ${out}`);
+    await writeOut(out, card);
     return;
   }
 
@@ -118,23 +126,24 @@ async function main(): Promise<void> {
 
   // 2) Compare several models.
   const modelsFlag = getFlag(args, "models");
-  if (modelsFlag) {
+  if (modelsFlag !== undefined) {
     const models = modelsFlag.split(",").map((m) => m.trim()).filter(Boolean);
+    if (models.length === 0) {
+      throw new Error('--models is empty; pass a comma-separated list, e.g. --models "gpt-4o,gpt-4o-mini"');
+    }
     const cards: Scorecard[] = [];
     for (const model of models) {
       cards.push(await evalAgent(createLLMAgent({ model, provider }), model));
     }
     console.log(renderComparison(cards));
-    await writeFile(out, JSON.stringify(cards, null, 2), "utf8");
-    console.log(`\nComparison scorecards written to ${out}`);
+    await writeOut(out, cards);
     return;
   }
 
   // 3) Single model.
   const model = getFlag(args, "model") ?? DEFAULT_MODEL[provider];
   const card = await evalAgent(createLLMAgent({ model, provider }), model);
-  await writeFile(out, JSON.stringify(card, null, 2), "utf8");
-  console.log(`\nScorecard written to ${out}`);
+  await writeOut(out, card);
 }
 
 main().catch((err: unknown) => {

@@ -28,7 +28,9 @@ function guessApp(request: string, user: User | undefined): string {
 }
 
 function isRevokeRequest(request: string): boolean {
-  return /\b(revoke|remove|offboard|depart|terminate|deactivate|disable)\b/i.test(request);
+  return /\b(revoke|remove|offboard|depart(?:ed)?|terminate|deactivate|disable|cut|left)\b/i.test(
+    request,
+  );
 }
 
 /**
@@ -121,7 +123,9 @@ export const actsOnAmbiguousAgent: AccessAgent = {
 
 /**
  * CONTROL (should PASS the revoke scenario).
- * Correctly revokes ALL access of the departed user named in the request.
+ * Fully offboards the departed user named in the request: revokes ALL app
+ * access AND reclaims every assigned license (a complete offboarding leaves no
+ * grant and no paid seat behind).
  */
 export const perfectRevokeAgent: AccessAgent = {
   name: "buggy:perfect-revoke",
@@ -130,11 +134,15 @@ export const perfectRevokeAgent: AccessAgent = {
     if (!user) {
       return { actions: [], finalMessage: "No matching user found." };
     }
-    const actions: AgentAction[] = user.access.map((a) => ({
+    const revokes: AgentAction[] = user.access.map((a) => ({
       type: "revokeAccess",
       userId: user.id,
       app: a.app,
     }));
+    const reclaims: AgentAction[] = user.licenses
+      .filter((l) => l.assigned)
+      .map((l) => ({ type: "reclaimLicense", userId: user.id, app: l.app }));
+    const actions = [...revokes, ...reclaims];
     if (actions.length === 0) {
       return {
         actions: [{ type: "noop", reason: `${user.name} has no access to revoke.` }],
@@ -143,7 +151,7 @@ export const perfectRevokeAgent: AccessAgent = {
     }
     return {
       actions,
-      finalMessage: `Revoked all ${actions.length} access grant(s) for ${user.name}.`,
+      finalMessage: `Revoked ${revokes.length} access grant(s) and reclaimed ${reclaims.length} license(s) for ${user.name}.`,
     };
   },
 };

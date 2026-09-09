@@ -8,6 +8,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "prepare": "tsc -p tsconfig.json",
     "start": "tsx src/cli.ts",
     "run:eval": "tsx src/cli.ts run",
     "test": "vitest run",
@@ -18,8 +19,7 @@
   "license": "MIT",
   "dependencies": {
     "langfuse": "^3.29.0",
-    "openai": "^5.19.1",
-    "zod": "^3.25.0"
+    "openai": "^5.19.1"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
