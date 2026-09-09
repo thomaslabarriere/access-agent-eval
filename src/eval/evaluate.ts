@@ -39,7 +39,15 @@ export function evaluateScenario(
   // The predicates themselves also short-circuit on absent fields, so this is
   // defence-in-depth and keeps the applicability explicit.
   if (expected.mustRevokeAllAccessForUser !== undefined) {
-    if (failsMissedRevoke(expected, diff)) failures.push("missed_revoke");
+    // Apps the departed user held before the run — full revocation means every
+    // one of these must appear in the removed set (partial revoke = still a leak).
+    const targetUser = scenario.initialState.users.find(
+      (u) => u.id === expected.mustRevokeAllAccessForUser,
+    );
+    const initialApps = targetUser ? targetUser.access.map((a) => a.app) : [];
+    if (failsMissedRevoke(expected, diff, initialApps)) {
+      failures.push("missed_revoke");
+    }
   }
   if (expected.mustNotExceedRole !== undefined) {
     if (failsOverGrant(expected, diff)) failures.push("over_grant");

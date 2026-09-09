@@ -1,9 +1,10 @@
 import { writeFile } from "node:fs/promises";
-import { AccessAgent } from "./types.js";
+import { AccessAgent, Scorecard } from "./types.js";
 import { scenarios } from "./scenarios/scenarios.js";
 import { runScenarios } from "./runner.js";
 import { buildScorecard, renderScorecard } from "./eval/scorecard.js";
-import { createLLMAgent } from "./agent/runAgent.js";
+import { createLLMAgent, Provider } from "./agent/runAgent.js";
+import { sendTraces } from "./obs/langfuse.js";
 import {
   neverActuallyRevokesAgent,
   overGrantsAdminAgent,
@@ -20,6 +21,11 @@ const BUGGY: Record<string, AccessAgent> = {
   "perfect-revoke": perfectRevokeAgent,
 };
 
+const DEFAULT_MODEL: Record<Provider, string> = {
+  openai: "gpt-4o",
+  openrouter: "anthropic/claude-3.7-sonnet",
+};
+
 function getFlag(args: string[], name: string): string | undefined {
   const i = args.indexOf(`--${name}`);
   return i >= 0 && i + 1 < args.length ? args[i + 1] : undefined;
@@ -31,63 +37,104 @@ function usage(): void {
       "access-agent-eval — reliability & anomaly evaluation for access-management agents",
       "",
       "Usage:",
-      "  access-agent-eval run [--model <openrouter-model>] [--agent buggy:<name>] [--out <file>]",
+      "  access-agent-eval run [--provider openai|openrouter] [--model <model>]",
+      "  access-agent-eval run --models <m1,m2,...>        # compare several models",
+      "  access-agent-eval run --agent buggy:<name>        # no API key needed",
+      "",
+      "Keys (set one): OPENAI_API_KEY  or  OPENROUTER_API_KEY",
+      "Optional tracing: LANGFUSE_PUBLIC_KEY + LANGFUSE_SECRET_KEY",
       "",
       "Examples:",
-      "  access-agent-eval run --model anthropic/claude-3.7-sonnet",
+      "  OPENAI_API_KEY=sk-... access-agent-eval run --model gpt-4o",
+      "  access-agent-eval run --models gpt-4o,gpt-4o-mini",
       "  access-agent-eval run --agent buggy:never-revoke",
       "",
-      `Buggy agents (no API key needed): ${Object.keys(BUGGY)
-        .map((n) => `buggy:${n}`)
-        .join(", ")}`,
-    ].join("\n")
+      `Buggy agents: ${Object.keys(BUGGY).map((n) => `buggy:${n}`).join(", ")}`,
+    ].join("\n"),
   );
 }
 
-function selectAgent(args: string[]): AccessAgent {
+/** Pick the provider: explicit flag wins, else infer from whichever key is set. */
+function resolveProvider(args: string[]): Provider {
+  const flag = getFlag(args, "provider");
+  if (flag === "openai" || flag === "openrouter") return flag;
+  if (process.env.OPENAI_API_KEY) return "openai";
+  if (process.env.OPENROUTER_API_KEY) return "openrouter";
+  throw new Error(
+    "No API key found. Set OPENAI_API_KEY or OPENROUTER_API_KEY, or use --agent buggy:<name> to try the harness without an LLM.",
+  );
+}
+
+async function evalAgent(
+  agent: AccessAgent,
+  model: string | undefined,
+): Promise<Scorecard> {
+  console.log(`\nRunning ${scenarios.length} scenarios against ${agent.name}...`);
+  const results = await runScenarios(agent, scenarios);
+  const scorecard = buildScorecard(agent.name, model, results);
+  console.log(renderScorecard(scorecard));
+  await sendTraces(agent.name, model, results);
+  return scorecard;
+}
+
+function renderComparison(cards: Scorecard[]): string {
+  const rows = cards
+    .map(
+      (c) =>
+        `  ${(c.model ?? c.agentName).padEnd(32)} ${String(
+          c.reliabilityScore,
+        ).padStart(3)}/100   ${c.passed}/${c.totalScenarios} passed`,
+    )
+    .join("\n");
+  return ["", "=".repeat(60), "Model comparison (reliability score)", "-".repeat(60), rows, "=".repeat(60)].join("\n");
+}
+
+async function main(): Promise<void> {
+  const args = process.argv.slice(2);
+  if (args[0] !== "run") {
+    usage();
+    process.exit(args[0] ? 1 : 0);
+  }
+
+  const out = getFlag(args, "out") ?? "scorecard.json";
+
+  // 1) Buggy agent (no key).
   const agentFlag = getFlag(args, "agent");
   if (agentFlag) {
     const name = agentFlag.replace(/^buggy:/, "");
     const agent = BUGGY[name];
     if (!agent) {
       throw new Error(
-        `Unknown agent "${agentFlag}". Available: ${Object.keys(BUGGY)
-          .map((n) => `buggy:${n}`)
-          .join(", ")}`
+        `Unknown agent "${agentFlag}". Available: ${Object.keys(BUGGY).map((n) => `buggy:${n}`).join(", ")}`,
       );
     }
-    return agent;
-  }
-  const model = getFlag(args, "model") ?? "anthropic/claude-3.7-sonnet";
-  if (!process.env.OPENROUTER_API_KEY) {
-    throw new Error(
-      "OPENROUTER_API_KEY is not set. Export it, or use --agent buggy:<name> to try the harness without an LLM."
-    );
-  }
-  return createLLMAgent({ model });
-}
-
-async function main(): Promise<void> {
-  const args = process.argv.slice(2);
-  const cmd = args[0];
-
-  if (cmd !== "run") {
-    usage();
-    process.exit(cmd ? 1 : 0);
+    const card = await evalAgent(agent, undefined);
+    await writeFile(out, JSON.stringify(card, null, 2), "utf8");
+    console.log(`\nScorecard written to ${out}`);
+    return;
   }
 
-  const agent = selectAgent(args);
-  const model = getFlag(args, "model");
-  const out = getFlag(args, "out") ?? "scorecard.json";
+  const provider = resolveProvider(args);
 
-  console.log(`Running ${scenarios.length} scenarios against ${agent.name}...\n`);
-  const results = await runScenarios(agent, scenarios);
-  const scorecard = buildScorecard(agent.name, model, results);
+  // 2) Compare several models.
+  const modelsFlag = getFlag(args, "models");
+  if (modelsFlag) {
+    const models = modelsFlag.split(",").map((m) => m.trim()).filter(Boolean);
+    const cards: Scorecard[] = [];
+    for (const model of models) {
+      cards.push(await evalAgent(createLLMAgent({ model, provider }), model));
+    }
+    console.log(renderComparison(cards));
+    await writeFile(out, JSON.stringify(cards, null, 2), "utf8");
+    console.log(`\nComparison scorecards written to ${out}`);
+    return;
+  }
 
-  console.log(renderScorecard(scorecard));
-
-  await writeFile(out, JSON.stringify(scorecard, null, 2), "utf8");
-  console.log(`\nDetailed scorecard written to ${out}`);
+  // 3) Single model.
+  const model = getFlag(args, "model") ?? DEFAULT_MODEL[provider];
+  const card = await evalAgent(createLLMAgent({ model, provider }), model);
+  await writeFile(out, JSON.stringify(card, null, 2), "utf8");
+  console.log(`\nScorecard written to ${out}`);
 }
 
 main().catch((err: unknown) => {

@@ -3,7 +3,23 @@ import type { AccessAgent, AgentAction, AgentRun } from "../types.js";
 import { renderStateForPrompt } from "../admin/state.js";
 import { tools, parseToolCall } from "./tools.js";
 
-const DEFAULT_BASE_URL = "https://openrouter.ai/api/v1";
+export type Provider = "openai" | "openrouter";
+
+const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
+
+/** Resolve baseURL + apiKey for a provider. OpenAI uses the SDK's default baseURL. */
+function resolveProvider(
+  provider: Provider,
+  explicitKey?: string,
+): { baseURL: string | undefined; apiKey: string | undefined } {
+  if (provider === "openai") {
+    return { baseURL: undefined, apiKey: explicitKey ?? process.env.OPENAI_API_KEY };
+  }
+  return {
+    baseURL: OPENROUTER_BASE_URL,
+    apiKey: explicitKey ?? process.env.OPENROUTER_API_KEY,
+  };
+}
 
 const SYSTEM_PROMPT = [
   "You are an IT access-management agent operating on a company's SaaS admin state.",
@@ -25,12 +41,15 @@ const SYSTEM_PROMPT = [
  */
 export function createLLMAgent(opts: {
   model: string;
+  provider?: Provider;
   apiKey?: string;
   baseURL?: string;
 }): AccessAgent {
   const model = opts.model;
-  const baseURL = opts.baseURL ?? DEFAULT_BASE_URL;
-  const apiKey = opts.apiKey ?? process.env.OPENROUTER_API_KEY;
+  const provider: Provider = opts.provider ?? "openrouter";
+  const resolved = resolveProvider(provider, opts.apiKey);
+  const baseURL = opts.baseURL ?? resolved.baseURL;
+  const apiKey = resolved.apiKey;
 
   const client = new OpenAI({ apiKey, baseURL });
 

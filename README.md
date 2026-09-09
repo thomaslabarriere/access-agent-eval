@@ -27,12 +27,39 @@ The `buggy:*` agents are deliberately broken agents used to prove the harness ca
 
 ## Run against a real model
 
+Set **one** key — OpenAI is used automatically if `OPENAI_API_KEY` is present:
+
 ```bash
-export OPENROUTER_API_KEY=sk-...
-npx tsx src/cli.ts run --model anthropic/claude-3.7-sonnet
+export OPENAI_API_KEY=sk-...
+npx tsx src/cli.ts run --model gpt-4o
 ```
 
-The agent connects to the model via OpenRouter, exposes the six access tools, and is scored on the eight scenarios.
+Or via OpenRouter (multi-vendor):
+
+```bash
+export OPENROUTER_API_KEY=sk-...
+npx tsx src/cli.ts run --provider openrouter --model anthropic/claude-3.7-sonnet
+```
+
+The agent connects to the model, is given the six access tools, and is scored on the eight scenarios.
+
+### Compare several models
+
+```bash
+npx tsx src/cli.ts run --models gpt-4o,gpt-4o-mini
+```
+
+Prints a scorecard per model plus a reliability comparison — the exploitable output: which model misses revocations, over-grants, or hallucinates confirmations most.
+
+### Optional: Langfuse tracing
+
+Corma uses Langfuse for LLM observability. If these are set, every run is traced (input, actions, state diff, verdict); if not, tracing is a silent no-op and never affects the eval.
+
+```bash
+export LANGFUSE_PUBLIC_KEY=pk-...
+export LANGFUSE_SECRET_KEY=sk-...
+# export LANGFUSE_BASEURL=https://cloud.langfuse.com   # optional
+```
 
 ## What it measures
 

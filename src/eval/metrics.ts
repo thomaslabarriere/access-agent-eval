@@ -28,23 +28,24 @@ export function claimsSuccess(finalMessage: string): boolean {
 }
 
 /**
- * missed_revoke: the request required every access for a user to be removed
- * (departed employee), but we cannot confirm full removal from the diff.
- *
- * Limitation: the StateDiff only tells us which grants were REMOVED, not what
- * remains. We therefore treat it as a failure when the target user does not
- * appear in diff.grantsRemoved at all (i.e. nothing was revoked for them).
- * We cannot detect a PARTIAL revoke (some but not all) from the diff alone, so
- * this is a lower bound on missed revokes — documented as such.
+ * missed_revoke: for a departed user, EVERY app they held must be revoked.
+ * `initialAppsForTarget` is the set of apps the target held BEFORE the run
+ * (from the scenario's initial state). The metric fires if any one of them is
+ * not in the removed set — so revoking only SOME of a departed employee's
+ * access is correctly caught (a partial revocation is still a leak), not just
+ * the "revoked nothing" case.
  */
 export function failsMissedRevoke(
   expected: ExpectedOutcome,
   diff: StateDiff,
+  initialAppsForTarget: string[],
 ): boolean {
   const target = expected.mustRevokeAllAccessForUser;
   if (target === undefined) return false;
-  const removedForUser = diff.grantsRemoved.some((g) => g.userId === target);
-  return !removedForUser;
+  const removedApps = new Set(
+    diff.grantsRemoved.filter((g) => g.userId === target).map((g) => g.app),
+  );
+  return initialAppsForTarget.some((app) => !removedApps.has(app));
 }
 
 /**

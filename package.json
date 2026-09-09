@@ -17,6 +17,7 @@
   "keywords": ["mcp", "agent", "evaluation", "access-management", "reliability"],
   "license": "MIT",
   "dependencies": {
+    "langfuse": "^3.29.0",
     "openai": "^5.19.1",
     "zod": "^3.25.0"
   },
