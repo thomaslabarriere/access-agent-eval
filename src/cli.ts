@@ -1,6 +1,7 @@
+#!/usr/bin/env node
 import { writeFile, mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
-import { AccessAgent, Scorecard } from "./types.js";
+import type { AccessAgent, Scorecard } from "./types.js";
 import { scenarios } from "./scenarios/scenarios.js";
 import { runScenarios } from "./runner.js";
 import { buildScorecard, renderScorecard } from "./eval/scorecard.js";

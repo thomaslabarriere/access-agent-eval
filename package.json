@@ -7,8 +7,8 @@
     "access-agent-eval": "./dist/cli.js"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "prepare": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.build.json",
+    "prepare": "tsc -p tsconfig.build.json",
     "start": "tsx src/cli.ts",
     "run:eval": "tsx src/cli.ts run",
     "test": "vitest run",
