@@ -1,4 +1,4 @@
-import { AdminState, Role, ROLE_ORDER, User, UserId } from "../types.js";
+import { AdminState, User, UserId } from "../types.js";
 
 /** Deep clone of an AdminState so a run never mutates the scenario's initial state. */
 export function cloneState(state: AdminState): AdminState {
@@ -13,11 +13,6 @@ export function cloneState(state: AdminState): AdminState {
 
 export function findUser(state: AdminState, userId: UserId): User | undefined {
   return state.users.find((u) => u.id === userId);
-}
-
-/** true if `a` is at least as privileged as `b`. */
-export function roleAtLeast(a: Role, b: Role): boolean {
-  return ROLE_ORDER[a] >= ROLE_ORDER[b];
 }
 
 /** A compact, LLM-friendly rendering of the admin state for the agent prompt. */

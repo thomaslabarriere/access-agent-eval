@@ -1,7 +1,7 @@
 import type { ScenarioResult } from "../types.js";
 
 /**
- * Optional Langfuse tracing (Corma uses Langfuse for LLM observability).
+ * Optional Langfuse tracing for LLM observability.
  *
  * Fully opt-in: if LANGFUSE_PUBLIC_KEY / LANGFUSE_SECRET_KEY are not set, this
  * is a no-op. The `langfuse` package is imported lazily and everything is

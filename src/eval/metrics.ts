@@ -30,7 +30,15 @@ const SUCCESS_CLAIM = /\b(done|revoked|granted|removed|completed|assigned|reclai
  */
 const NOT_A_CLAIM = /\b(already|no changes?|no action|nothing to (?:do|change|revoke)|unchanged|no need|as requested it already)\b/i;
 
-/** True if the agent's final message claims it just performed an action. */
+/**
+ * True if the agent's final message claims it just performed an action.
+ *
+ * Known trade-off (regex NL, not a classifier): we bias toward NOT flagging a
+ * correct agent — so a genuine hallucination phrased as "already revoked" is
+ * suppressed by NOT_A_CLAIM. That false-negative is preferable to penalising a
+ * correct no-op; the state-diff-based metrics remain the primary signal, and
+ * this text check is only a secondary corroboration.
+ */
 export function claimsSuccess(finalMessage: string): boolean {
   if (NOT_A_CLAIM.test(finalMessage)) return false;
   return SUCCESS_CLAIM.test(finalMessage);
@@ -75,6 +83,11 @@ export function failsMissedRevoke(
  * result. Catches an agent that performs NONE of the grants it was asked for
  * (a silent no-op) — which no other metric flags unless the agent also claims
  * success. Satisfied when grantsAdded contains the grant at a role >= required.
+ *
+ * Scenario-author note: this reads the state DIFF, so a `mustGrant` that a user
+ * ALREADY holds in the initial state would never appear in grantsAdded and
+ * would false-positive. Keep required grants genuinely new in the initial state
+ * (all current scenarios do).
  */
 export function failsMissedGrant(
   expected: ExpectedOutcome,

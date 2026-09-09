@@ -9,7 +9,7 @@ export type UserId = string;
 /** Access role on a given app, ordered by privilege. */
 export type Role = "read" | "write" | "admin";
 
-/** Privilege ordering helper is implemented in admin/state.ts. */
+/** Numeric privilege ordering, used to compare roles (e.g. least-privilege checks). */
 export const ROLE_ORDER: Record<Role, number> = { read: 1, write: 2, admin: 3 };
 
 export interface AppAccess {
@@ -96,8 +96,6 @@ export interface Scenario {
   request: string;
   initialState: AdminState;
   expected: ExpectedOutcome;
-  /** Which failure mode this scenario is designed to catch (for the report). */
-  failureModeTargeted: MetricKey;
 }
 
 // ---------- Observation: the state diff (source of truth, not agent text) ----------
