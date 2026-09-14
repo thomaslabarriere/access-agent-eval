@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Acme Admin — SaaS Access Console</title>
+<style>
+  :root{
+    --paper:#eef1f0; --card:#f7f9f8; --ink:#1b2321; --soft:#45524e; --faint:#6f7c78;
+    --rule:#d3dad7; --teal:#0d5a56; --teal-soft:#e2ebe8; --miss:#a6392b; --amber:#a6742b;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);
+    font:14px/1.5 "Public Sans",system-ui,-apple-system,sans-serif;padding:20px}
+  header{display:flex;align-items:baseline;gap:12px;margin-bottom:16px}
+  h1{font-size:18px;margin:0;letter-spacing:-.01em}
+  .env{font-size:11px;color:var(--faint);border:1px solid var(--rule);border-radius:20px;padding:2px 10px}
+  table{border-collapse:collapse;width:100%;background:var(--card);border:1px solid var(--rule);border-radius:8px;overflow:hidden}
+  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--rule);vertical-align:top}
+  th{background:var(--teal);color:#eaf3f0;font-size:11px;letter-spacing:.1em;text-transform:uppercase}
+  tr:last-child td{border-bottom:none}
+  .user{font-weight:600}
+  .email{color:var(--faint);font-size:12px}
+  .badge{display:inline-block;font-size:10.5px;padding:1px 7px;border-radius:20px;margin-left:6px}
+  .active{background:var(--teal-soft);color:var(--teal)}
+  .departed{background:#f2ded9;color:var(--miss);font-weight:600}
+  .chip{display:inline-flex;align-items:center;gap:6px;background:#fff;border:1px solid var(--rule);
+    border-radius:6px;padding:3px 6px 3px 9px;margin:2px 4px 2px 0;font-size:12.5px}
+  .chip .role{color:var(--soft);font-variant:small-caps}
+  .chip.admin .role{color:var(--miss);font-weight:700}
+  .lic{margin:2px 4px 2px 0;font-size:12px;color:var(--soft)}
+  .lic.free{opacity:.6}
+  button{font:inherit;font-size:12px;border:1px solid var(--rule);background:#fff;color:var(--ink);
+    border-radius:5px;padding:2px 8px;cursor:pointer}
+  button:hover{border-color:var(--teal);color:var(--teal)}
+  button.danger:hover{border-color:var(--miss);color:var(--miss)}
+  .grant{margin-top:6px;display:flex;gap:5px;align-items:center;flex-wrap:wrap}
+  .grant input{font:inherit;font-size:12px;padding:3px 6px;border:1px solid var(--rule);border-radius:5px;width:96px}
+  .grant select{font:inherit;font-size:12px;padding:3px 6px;border:1px solid var(--rule);border-radius:5px}
+  #log{margin-top:14px;font-size:11.5px;color:var(--faint);white-space:pre-wrap;max-height:120px;overflow:auto}
+</style>
+</head>
+<body>
+  <header>
+    <h1>Acme Admin — SaaS Access Console</h1>
+    <span class="env">mock environment · agent-operated</span>
+  </header>
+  <table id="grid"><thead><tr><th>User</th><th>App access</th><th>Licenses</th><th>Grant</th></tr></thead>
+    <tbody id="rows"></tbody>
+  </table>
+  <div id="log"></div>
+
+<script>
+// The single source of truth the DOM renders from. Mutated ONLY by the click
+// handlers below — never written from outside. An agent's effect on the world
+// is therefore observable exactly as a real admin console would show it.
+let STATE = { users: [] };
+
+const ROLES = ["read", "write", "admin"];
+function logLine(s){ const el=document.getElementById("log"); el.textContent += s + "\n"; el.scrollTop = el.scrollHeight; }
+function findUser(id){ return STATE.users.find(u => u.id === id); }
+
+function grant(userId, app, role){
+  const u = findUser(userId); if(!u || !app) return;
+  const ex = u.access.find(a => a.app === app);
+  if(ex){ ex.role = role; } else { u.access.push({ app, role }); }
+  logLine(`grant  ${userId}  ${app}:${role}`); render();
+}
+function revoke(userId, app){
+  const u = findUser(userId); if(!u) return;
+  u.access = u.access.filter(a => a.app !== app);
+  logLine(`revoke ${userId}  ${app}`); render();
+}
+function assign(userId, app){
+  const u = findUser(userId); if(!u) return;
+  const l = u.licenses.find(x => x.app === app);
+  if(l){ l.assigned = true; } else { u.licenses.push({ app, assigned:true, lastUsedDaysAgo:null }); }
+  logLine(`assign ${userId}  ${app}`); render();
+}
+function reclaim(userId, app){
+  const u = findUser(userId); if(!u) return;
+  const l = u.licenses.find(x => x.app === app);
+  if(l){ l.assigned = false; }
+  logLine(`reclaim ${userId} ${app}`); render();
+}
+
+function esc(s){ return String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;","&gt;":"&gt;",">":"&gt;",'"':"&quot;"}[c] || c)); }
+
+function render(){
+  const rows = STATE.users.map(u => {
+    const status = u.active
+      ? '<span class="badge active">active</span>'
+      : '<span class="badge departed">DEPARTED</span>';
+    const access = u.access.length
+      ? u.access.map(a =>
+          `<span class="chip ${a.role}"><span>${esc(a.app)}</span><span class="role">${a.role}</span>`
+          + `<button class="danger" data-act="revoke" data-user="${esc(u.id)}" data-app="${esc(a.app)}">revoke</button></span>`
+        ).join("")
+      : '<span class="email">none</span>';
+    const lics = u.licenses.length
+      ? u.licenses.map(l => {
+          const btn = l.assigned
+            ? `<button data-act="reclaim" data-user="${esc(u.id)}" data-app="${esc(l.app)}">reclaim</button>`
+            : `<button data-act="assign" data-user="${esc(u.id)}" data-app="${esc(l.app)}">assign</button>`;
+          return `<span class="lic ${l.assigned ? "" : "free"}">${esc(l.app)} `
+            + `(${l.assigned ? "assigned" : "free"}${l.lastUsedDaysAgo==null?"":`, ${l.lastUsedDaysAgo}d`}) ${btn}</span>`;
+        }).join("<br>")
+      : '<span class="email">none</span>';
+    const grantForm =
+      `<div class="grant">`
+      + `<input data-act="grant-app" data-user="${esc(u.id)}" placeholder="app">`
+      + `<select data-act="grant-role" data-user="${esc(u.id)}">`
+      + ROLES.map(r => `<option value="${r}">${r}</option>`).join("")
+      + `</select>`
+      + `<button data-act="grant" data-user="${esc(u.id)}">grant</button>`
+      + `</div>`;
+    return `<tr data-user-row="${esc(u.id)}"><td><div class="user">${esc(u.name)} ${status}</div>`
+      + `<div class="email">${esc(u.email)} · ${esc(u.id)}</div></td>`
+      + `<td>${access}</td><td>${lics}</td><td>${grantForm}</td></tr>`;
+  }).join("");
+  document.getElementById("rows").innerHTML = rows;
+}
+
+document.addEventListener("click", (e) => {
+  const t = e.target;
+  if(!(t instanceof HTMLElement)) return;
+  const act = t.getAttribute("data-act");
+  if(!act) return;
+  const userId = t.getAttribute("data-user");
+  if(act === "revoke") revoke(userId, t.getAttribute("data-app"));
+  else if(act === "reclaim") reclaim(userId, t.getAttribute("data-app"));
+  else if(act === "assign") assign(userId, t.getAttribute("data-app"));
+  else if(act === "grant"){
+    const app = document.querySelector(`[data-act="grant-app"][data-user="${userId}"]`).value.trim();
+    const role = document.querySelector(`[data-act="grant-role"][data-user="${userId}"]`).value;
+    grant(userId, app, role);
+  }
+});
+
+// ---- Automation surface (used by Playwright; not by human admins) ----
+window.__seed = (state) => {
+  STATE = JSON.parse(JSON.stringify(state));
+  document.getElementById("log").textContent = "";
+  render();
+  return true;
+};
+window.__readState = () => JSON.parse(JSON.stringify(STATE));
+
+render();
+</script>
+</body>
+</html>

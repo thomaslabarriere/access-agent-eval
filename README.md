@@ -6,7 +6,7 @@ Agents that provision and revoke access with *no human in the loop* are only as 
 
 The verdict comes from the **real state diff** (what the agent actually changed), never from the agent's prose, so an agent that *says* "done" but does nothing is caught, not trusted.
 
-> **On the word "agent".** The thing under test is a **one-shot classifier/planner**, not an autonomous multi-step agent: the real-model path is a single `chat.completions.create` call exposing the six access tools, whose emitted tool calls are then applied in order — there is no planning loop, no memory, and no feeding of results back for a next step. Where the code and this README say "agent" (and "autonomous", "no human in the loop") it describes the class of system this harness is *for*; the thing it actually runs and grades is that single call, and the `buggy:*` fixtures are plain, network-free functions. Plug in a genuinely agentic tool-loop behind the same interface and the harness still applies — it only grades the state diff.
+> **On the word "agent".** The thing under test is a **one-shot classifier/planner**, not an autonomous multi-step agent: the real-model path is a single `chat.completions.create` call exposing the six access tools, whose emitted tool calls are then applied in order — there is no planning loop, no memory, and no feeding of results back for a next step. Where the code and this README say "agent" (and "autonomous", "no human in the loop") it describes the class of system this harness is *for*; the thing it actually runs and grades is that single call, and the `buggy:*` fixtures are plain, network-free functions. Plug in a genuinely agentic tool-loop behind the same interface and the harness still applies — it only grades the state diff. (A worked example of exactly that — a multi-turn agent operating a real UI in the browser — is in *Live browser demo* below.)
 
 ## Quick start (no API key needed)
 
@@ -72,6 +72,25 @@ export LANGFUSE_SECRET_KEY=sk-...
 # export LANGFUSE_BASEURL=https://cloud.langfuse.com   # optional
 ```
 
+## Live browser demo: a real agent operating a real UI
+
+The eval above grades a one-shot planner whose actions are applied to an in-memory state. This is the other half: a **browser agent that operates a real mock admin console** (Playwright), in a **multi-turn observe/act loop** (read the DOM, click, re-read, decide again) with *no human in the loop*, and the verdict is **read back from the DOM** — not from any list of actions the agent claims. It is the concrete instance of "plug a genuinely agentic tool-loop behind the same interface" from the note above: `diffState`, the metrics, and the scorecard are reused unchanged (`src/browser/runner.ts` only swaps "apply the agent's actions" for "read the world the agent left behind").
+
+![A browser agent offboarding a user by clicking the real admin console](docs/browser-demo.gif)
+
+```bash
+npm install
+npx playwright install chromium
+
+# a "ghost done": the agent says "access revoked" but clicks nothing -> caught by the diff
+npm run demo:browser -- --agent browser:never-revoke
+
+# a control that actually clicks through the revocations on one scenario (records a video)
+npm run demo:browser -- --agent browser:perfect-revoke --scenario revoke-departed --video
+```
+
+`browser:never-revoke` returns `finalMessage: "Done, access revoked."` and never touches the UI, so the console is unchanged, the DOM read-back shows `noChange`, and the same `missed_revoke` + `confirmation_hallucination` fire, now proven end-to-end through a real interface rather than a stubbed function. The browser policies are deterministic (no API key), mirroring the offline `buggy:*`/`perfect-revoke` fixtures but *actuating the DOM*; `test/browser.test.ts` launches Chromium and pins both that a real click changes the read-back state and that the ghost agent is caught.
+
 ## What it measures
 
 Per scenario, against ground truth:
@@ -107,7 +126,7 @@ This is the trust layer a recommender / anomaly-detection roadmap stands on: you
 
 ## Why you can trust the harness (mutation proof)
 
-An evaluator is worthless if it can't actually catch a broken agent. The suite (31 tests across `test/`) proves the claim rather than asserting it:
+An evaluator is worthless if it can't actually catch a broken agent. The suite (35 tests across `test/`) proves the claim rather than asserting it:
 
 - **Mutation proof** (`test/eval.test.ts`) runs each deliberately-broken agent (`src/agent/buggy.ts`) and asserts it is caught on the right metric, with the assertion reaching into the observed `diff` (e.g. `missed_revoke` fires *and* `grantsRemoved` is empty; `over_grant` fires *and* an `admin` role appears in `grantsAdded`; `wrong_target` fires *and* `u_jdupont` is in `usersTouched` while `u_jdupuis` is not). The over-granting agent is additionally shown to trip `unsafe_privilege` on the dangerous-request scenario. A *correct* agent is checked to pass fully and **not** be falsely flagged.
 - **State-diff** (`test/diff.test.ts`) pins `diffState` directly: new grants, role upgrades, revocations, reclaims, and no-op detection.
@@ -127,9 +146,11 @@ src/
   agent/              # LLM agent (OpenAI / OpenRouter) + tools + buggy agents
   scenarios/          # 8 ground-truth scenarios
   eval/               # metrics, evaluator, anomaly detection, scorecard
-  runner.ts           # run a scenario end-to-end
+  browser/            # live demo: mock admin UI + Playwright agents that operate it,
+                      #   read-back-from-DOM runner (reuses diffState + eval unchanged)
+  runner.ts           # run a scenario end-to-end (in-memory)
   cli.ts              # `access-agent-eval run`
-test/                 # mutation-proof tests
+test/                 # mutation-proof tests (incl. browser.test.ts, real Chromium)
 ```
 
 ## Scenarios
