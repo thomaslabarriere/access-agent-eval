@@ -8,6 +8,12 @@ The verdict comes from the **real state diff** (what the agent actually changed)
 
 > The code was written by orchestrating coding agents; the **design decisions and the alternatives I rejected** are in **[DECISIONS.md](DECISIONS.md)** — the part that was not generated for me.
 
+### See it operate a real admin console
+
+A browser agent (Playwright) offboards a departed employee by clicking the actual UI, multi-turn, with no human in the loop. The verdict is then read back **from the DOM**, so an agent that says "done" and clicks nothing is caught, not trusted. Full walkthrough and commands in *Live browser demo* below.
+
+![A browser agent offboarding a departed employee by clicking the mock admin console; the verdict is read back from the DOM](docs/browser-demo.gif)
+
 > **On the word "agent".** The thing under test is a **one-shot classifier/planner**, not an autonomous multi-step agent: the real-model path is a single `chat.completions.create` call exposing the six access tools, whose emitted tool calls are then applied in order — there is no planning loop, no memory, and no feeding of results back for a next step. Where the code and this README say "agent" (and "autonomous", "no human in the loop") it describes the class of system this harness is *for*; the thing it actually runs and grades is that single call, and the `buggy:*` fixtures are plain, network-free functions. Plug in a genuinely agentic tool-loop behind the same interface and the harness still applies — it only grades the state diff. (A worked example of exactly that — a multi-turn agent operating a real UI in the browser — is in *Live browser demo* below.)
 
 ## Quick start (no API key needed)
@@ -78,7 +84,7 @@ export LANGFUSE_SECRET_KEY=sk-...
 
 The eval above grades a one-shot planner whose actions are applied to an in-memory state. This is the other half: a **browser agent that operates a real mock admin console** (Playwright), in a **multi-turn observe/act loop** (read the DOM, click, re-read, decide again) with *no human in the loop*, and the verdict is **read back from the DOM** — not from any list of actions the agent claims. It is the concrete instance of "plug a genuinely agentic tool-loop behind the same interface" from the note above: `diffState`, the metrics, and the scorecard are reused unchanged (`src/browser/runner.ts` only swaps "apply the agent's actions" for "read the world the agent left behind").
 
-![A browser agent offboarding a user by clicking the real admin console](docs/browser-demo.gif)
+(The GIF at the top of this README is this demo: `browser:perfect-revoke` clicking through the revocations on the offboard scenario.)
 
 ```bash
 npm install
