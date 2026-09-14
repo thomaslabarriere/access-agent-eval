@@ -12,7 +12,7 @@ function world(): AdminState {
       {
         id: "u_mdurand",
         name: "Marie Durand",
-        email: "marie.durand@corma.io",
+        email: "marie.durand@acme.example",
         active: true,
         access: [{ app: "slack", role: "read" }],
         licenses: [],
@@ -20,7 +20,7 @@ function world(): AdminState {
       {
         id: "u_pbernard",
         name: "Paul Bernard",
-        email: "paul.bernard@corma.io",
+        email: "paul.bernard@acme.example",
         active: true,
         access: [{ app: "crm", role: "read" }],
         licenses: [],
@@ -62,7 +62,7 @@ describe("out_of_scope — resolves names<->ids against the request", () => {
 
   it("resolves a user addressed by email", () => {
     const state = world();
-    const request = "Grant paul.bernard@corma.io access to the CRM.";
+    const request = "Grant paul.bernard@acme.example access to the CRM.";
     const actions: AgentAction[] = [
       { type: "grantAccess", userId: "u_pbernard", app: "crm", role: "write" },
     ];

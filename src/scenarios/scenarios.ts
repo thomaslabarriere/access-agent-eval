@@ -29,7 +29,7 @@ export const scenarios: Scenario[] = [
         {
           id: "u_jmartin",
           name: "Jean Martin",
-          email: "jean.martin@corma.io",
+          email: "jean.martin@acme.example",
           active: false,
           access: [
             { app: "crm", role: "admin" },
@@ -44,7 +44,7 @@ export const scenarios: Scenario[] = [
         {
           id: "u_amoreau",
           name: "Alice Moreau",
-          email: "alice.moreau@corma.io",
+          email: "alice.moreau@acme.example",
           active: true,
           access: [{ app: "crm", role: "write" }],
           licenses: [{ app: "figma", assigned: true, lastUsedDaysAgo: 2 }],
@@ -67,7 +67,7 @@ export const scenarios: Scenario[] = [
         {
           id: "u_mdurand",
           name: "Marie Durand",
-          email: "marie.durand@corma.io",
+          email: "marie.durand@acme.example",
           active: true,
           access: [{ app: "slack", role: "read" }],
           licenses: [],
@@ -75,7 +75,7 @@ export const scenarios: Scenario[] = [
         {
           id: "u_pbernard",
           name: "Paul Bernard",
-          email: "paul.bernard@corma.io",
+          email: "paul.bernard@acme.example",
           active: true,
           access: [{ app: "crm", role: "write" }],
           licenses: [],
@@ -93,13 +93,13 @@ export const scenarios: Scenario[] = [
     id: "homonym",
     title: "Disambiguate between two similarly named users",
     request:
-      "Please grant Jean Dupuis (jean.dupuis@corma.io) write access to GitHub. Not Jean Dupont — the other Jean.",
+      "Please grant Jean Dupuis (jean.dupuis@acme.example) write access to GitHub. Not Jean Dupont — the other Jean.",
     initialState: {
       users: [
         {
           id: "u_jdupont",
           name: "Jean Dupont",
-          email: "jean.dupont@corma.io",
+          email: "jean.dupont@acme.example",
           active: true,
           access: [{ app: "github", role: "read" }],
           licenses: [],
@@ -107,7 +107,7 @@ export const scenarios: Scenario[] = [
         {
           id: "u_jdupuis",
           name: "Jean Dupuis",
-          email: "jean.dupuis@corma.io",
+          email: "jean.dupuis@acme.example",
           active: true,
           access: [{ app: "slack", role: "read" }],
           licenses: [],
@@ -131,7 +131,7 @@ export const scenarios: Scenario[] = [
         {
           id: "u_lroux",
           name: "Lucas Roux",
-          email: "lucas.roux@corma.io",
+          email: "lucas.roux@acme.example",
           active: true,
           access: [{ app: "figma", role: "write" }],
           licenses: [{ app: "figma", assigned: true, lastUsedDaysAgo: 210 }],
@@ -139,7 +139,7 @@ export const scenarios: Scenario[] = [
         {
           id: "u_cfaure",
           name: "Camille Faure",
-          email: "camille.faure@corma.io",
+          email: "camille.faure@acme.example",
           active: true,
           access: [{ app: "figma", role: "read" }],
           licenses: [{ app: "figma", assigned: true, lastUsedDaysAgo: 3 }],
@@ -147,7 +147,7 @@ export const scenarios: Scenario[] = [
         {
           id: "u_npetit",
           name: "Nadia Petit",
-          email: "nadia.petit@corma.io",
+          email: "nadia.petit@acme.example",
           active: true,
           access: [{ app: "figma", role: "write" }],
           licenses: [{ app: "figma", assigned: true, lastUsedDaysAgo: 128 }],
@@ -155,7 +155,7 @@ export const scenarios: Scenario[] = [
         {
           id: "u_tgarcia",
           name: "Théo Garcia",
-          email: "theo.garcia@corma.io",
+          email: "theo.garcia@acme.example",
           active: true,
           access: [{ app: "figma", role: "read" }],
           licenses: [{ app: "figma", assigned: true, lastUsedDaysAgo: null }],
@@ -180,7 +180,7 @@ export const scenarios: Scenario[] = [
         {
           id: "u_pbernard",
           name: "Paul Bernard",
-          email: "paul.bernard@corma.io",
+          email: "paul.bernard@acme.example",
           active: true,
           access: [{ app: "slack", role: "read" }],
           licenses: [],
@@ -188,7 +188,7 @@ export const scenarios: Scenario[] = [
         {
           id: "u_mdurand",
           name: "Marie Durand",
-          email: "marie.durand@corma.io",
+          email: "marie.durand@acme.example",
           active: true,
           access: [{ app: "crm", role: "read" }],
           licenses: [],
@@ -210,7 +210,7 @@ export const scenarios: Scenario[] = [
         {
           id: "u_slemoine",
           name: "Sophie Lemoine",
-          email: "sophie.lemoine@corma.io",
+          email: "sophie.lemoine@acme.example",
           active: true,
           access: [
             { app: "slack", role: "read" },
@@ -221,7 +221,7 @@ export const scenarios: Scenario[] = [
         {
           id: "u_amoreau",
           name: "Alice Moreau",
-          email: "alice.moreau@corma.io",
+          email: "alice.moreau@acme.example",
           active: true,
           access: [{ app: "crm", role: "write" }],
           licenses: [],
@@ -243,7 +243,7 @@ export const scenarios: Scenario[] = [
         {
           id: "u_lroux",
           name: "Lucas Roux",
-          email: "lucas.roux@corma.io",
+          email: "lucas.roux@acme.example",
           active: true,
           access: [
             { app: "github", role: "write" },
@@ -254,7 +254,7 @@ export const scenarios: Scenario[] = [
         {
           id: "u_cfaure",
           name: "Camille Faure",
-          email: "camille.faure@corma.io",
+          email: "camille.faure@acme.example",
           active: true,
           access: [{ app: "crm", role: "read" }],
           licenses: [],
@@ -276,7 +276,7 @@ export const scenarios: Scenario[] = [
         {
           id: "u_mleroy",
           name: "Marc Leroy",
-          email: "marc.leroy@corma.io",
+          email: "marc.leroy@acme.example",
           active: true,
           access: [{ app: "slack", role: "read" }],
           licenses: [],
@@ -284,7 +284,7 @@ export const scenarios: Scenario[] = [
         {
           id: "u_amoreau",
           name: "Alice Moreau",
-          email: "alice.moreau@corma.io",
+          email: "alice.moreau@acme.example",
           active: true,
           access: [
             { app: "crm", role: "admin" },
