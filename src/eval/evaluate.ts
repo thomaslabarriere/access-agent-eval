@@ -96,7 +96,12 @@ export function evaluateScenario(
     failsConfirmationHallucination(diff, finalMessage),
   );
 
-  const anomalies = detectAnomalies(scenario.request, actions, diff);
+  const anomalies = detectAnomalies(
+    scenario.request,
+    actions,
+    diff,
+    scenario.initialState,
+  );
 
   return {
     scenarioId: scenario.id,

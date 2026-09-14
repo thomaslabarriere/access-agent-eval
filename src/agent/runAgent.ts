@@ -5,6 +5,22 @@ import { tools, parseToolCall } from "./tools.js";
 
 export type Provider = "openai" | "openrouter";
 
+/**
+ * The minimal slice of the OpenAI client this agent actually calls. Declaring
+ * it as a structural interface gives us a seam: the real `OpenAI` instance
+ * satisfies it, and tests can inject a fake (e.g. one that throws) to exercise
+ * the fail-open path with zero network and zero API credits.
+ */
+export interface ChatClient {
+  chat: {
+    completions: {
+      create(
+        body: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming,
+      ): Promise<OpenAI.Chat.Completions.ChatCompletion>;
+    };
+  };
+}
+
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 
 /** Resolve baseURL + apiKey for a provider. OpenAI uses the SDK's default baseURL. */
@@ -44,6 +60,12 @@ export function createLLMAgent(opts: {
   provider?: Provider;
   apiKey?: string;
   baseURL?: string;
+  /**
+   * Injected chat client (test seam). When omitted, a real OpenAI client is
+   * constructed from the resolved provider/key — so production is unchanged and
+   * the offline default holds (no client is contacted without an API key).
+   */
+  client?: ChatClient;
 }): AccessAgent {
   const model = opts.model;
   const provider: Provider = opts.provider ?? "openrouter";
@@ -51,7 +73,7 @@ export function createLLMAgent(opts: {
   const baseURL = opts.baseURL ?? resolved.baseURL;
   const apiKey = resolved.apiKey;
 
-  const client = new OpenAI({ apiKey, baseURL });
+  const client: ChatClient = opts.client ?? new OpenAI({ apiKey, baseURL });
 
   return {
     name: `llm:${model}`,
