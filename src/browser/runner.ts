@@ -4,7 +4,6 @@ import { cloneState } from "../admin/state.js";
 import { diffState } from "../admin/snapshot.js";
 import { evaluateScenario } from "../eval/evaluate.js";
 import { loadAndSeed, readState } from "./dom.js";
-import { makeBrowserAgent, BROWSER_POLICIES } from "./browserAgents.js";
 
 const EMPTY_DIFF: StateDiff = {
   grantsAdded: [],
@@ -63,7 +62,8 @@ export async function runBrowserScenario(
 }
 
 export interface BrowserRunOptions {
-  policyName: string;
+  /** Build the agent under test once the page exists (deterministic policy or real LLM). */
+  makeAgent: (page: Page) => AccessAgent;
   scenarios: Scenario[];
   /** Record a .webm of the whole run into this dir (one video for the session). */
   videoDir?: string;
@@ -75,19 +75,10 @@ export interface BrowserRunResult {
   videoPath?: string;
 }
 
-/** Launch Chromium once, run every scenario against the chosen browser policy. */
+/** Launch Chromium once, run every scenario against the agent built by makeAgent. */
 export async function runBrowserScenarios(
   opts: BrowserRunOptions,
 ): Promise<BrowserRunResult> {
-  const policy = BROWSER_POLICIES[opts.policyName];
-  if (!policy) {
-    throw new Error(
-      `Unknown browser agent "browser:${opts.policyName}". Available: ${Object.keys(BROWSER_POLICIES)
-        .map((n) => `browser:${n}`)
-        .join(", ")}`,
-    );
-  }
-
   const browser: Browser = await chromium.launch();
   const context = await browser.newContext(
     opts.videoDir
@@ -97,7 +88,7 @@ export async function runBrowserScenarios(
   const page = await context.newPage();
   await page.setViewportSize({ width: 1100, height: 720 });
 
-  const agent = makeBrowserAgent(page, policy);
+  const agent = opts.makeAgent(page);
   const results: ScenarioResult[] = [];
   for (const scenario of opts.scenarios) {
     results.push(await runBrowserScenario(page, agent, scenario));

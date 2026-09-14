@@ -68,6 +68,8 @@ Each entry: what I chose, what I rejected, and why. The last section is what thi
 
 **Why.** A browser agent can believe it clicked "revoke" when the button was disabled, absent, or on the wrong row, so the UI never changed. If I graded its self-reported actions I would be back to trusting the prose (decision 1), one level up. Reading the DOM is the only way to catch the "ghost done" for an agent that actually acts in a world. This is what turns the README's promise ("plug a real tool-loop behind the same interface") into a demonstration: `browser:never-revoke` says "Done, access revoked", clicks nothing, and is caught end to end.
 
+**A real LLM drives the same loop** (`src/browser/browserLLM.ts`, `--agent llm:<model>`): a genuine multi-turn agent that reads the live state back from the DOM each turn, emits tool calls, actuates them on the page, and re-observes until it finishes. The deterministic policies stay as the offline path; the LLM agent proves the loop on a real model. The verdict is unchanged either way — it comes from the DOM read-back, so a real model that claims "done" and clicks nothing is caught exactly like the fixture. The loop is pinned offline with an injected fake chat client (no key, no credits), the same test seam the offline LLM path uses.
+
 ---
 
 ## What this harness does NOT prove

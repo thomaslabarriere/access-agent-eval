@@ -95,9 +95,14 @@ npm run demo:browser -- --agent browser:never-revoke
 
 # a control that actually clicks through the revocations on one scenario (records a video)
 npm run demo:browser -- --agent browser:perfect-revoke --scenario revoke-departed --video
+
+# a REAL model drives the UI, multi-turn (needs a key); the verdict still comes from the DOM
+OPENAI_API_KEY=sk-... npm run demo:browser -- --agent llm:gpt-4o --provider openai
 ```
 
-`browser:never-revoke` returns `finalMessage: "Done, access revoked."` and never touches the UI, so the console is unchanged, the DOM read-back shows `noChange`, and the same `missed_revoke` + `confirmation_hallucination` fire, now proven end-to-end through a real interface rather than a stubbed function. The browser policies are deterministic (no API key), mirroring the offline `buggy:*`/`perfect-revoke` fixtures but *actuating the DOM*; `test/browser.test.ts` launches Chromium and pins both that a real click changes the read-back state and that the ghost agent is caught.
+`browser:never-revoke` returns `finalMessage: "Done, access revoked."` and never touches the UI, so the console is unchanged, the DOM read-back shows `noChange`, and the same `missed_revoke` + `confirmation_hallucination` fire, now proven end-to-end through a real interface rather than a stubbed function. The deterministic browser policies are the offline path (no API key), mirroring the `buggy:*`/`perfect-revoke` fixtures but *actuating the DOM*.
+
+**A real LLM can drive the same loop.** `--agent llm:<model>` runs a genuine multi-turn agent (`src/browser/browserLLM.ts`): each turn it reads the live state back from the DOM, decides tool calls, we actuate them on the page, and it re-observes, until it finishes. The verdict is still computed from the DOM the model actually left behind, not from the tool calls it claims — so a real model that says "done" and clicks nothing is caught exactly like the fixture. `test/browser.test.ts` launches Chromium and pins all of it offline: a real click changes the read-back state, the deterministic ghost is caught, and an injected fake LLM client exercises the real multi-turn loop (both a model that clicks through and a model that only claims success).
 
 ## What it measures
 
@@ -134,7 +139,7 @@ This is the trust layer a recommender / anomaly-detection roadmap stands on: you
 
 ## Why you can trust the harness (mutation proof)
 
-An evaluator is worthless if it can't actually catch a broken agent. The suite (35 tests across `test/`) proves the claim rather than asserting it:
+An evaluator is worthless if it can't actually catch a broken agent. The suite (37 tests across `test/`) proves the claim rather than asserting it:
 
 - **Mutation proof** (`test/eval.test.ts`) runs each deliberately-broken agent (`src/agent/buggy.ts`) and asserts it is caught on the right metric, with the assertion reaching into the observed `diff` (e.g. `missed_revoke` fires *and* `grantsRemoved` is empty; `over_grant` fires *and* an `admin` role appears in `grantsAdded`; `wrong_target` fires *and* `u_jdupont` is in `usersTouched` while `u_jdupuis` is not). The over-granting agent is additionally shown to trip `unsafe_privilege` on the dangerous-request scenario. A *correct* agent is checked to pass fully and **not** be falsely flagged.
 - **State-diff** (`test/diff.test.ts`) pins `diffState` directly: new grants, role upgrades, revocations, reclaims, and no-op detection.
