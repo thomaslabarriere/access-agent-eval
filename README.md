@@ -6,6 +6,8 @@ Agents that provision and revoke access with *no human in the loop* are only as 
 
 The verdict comes from the **real state diff** (what the agent actually changed), never from the agent's prose, so an agent that *says* "done" but does nothing is caught, not trusted.
 
+> **On the word "agent".** The thing under test is a **one-shot classifier/planner**, not an autonomous multi-step agent: the real-model path is a single `chat.completions.create` call exposing the six access tools, whose emitted tool calls are then applied in order — there is no planning loop, no memory, and no feeding of results back for a next step. Where the code and this README say "agent" (and "autonomous", "no human in the loop") it describes the class of system this harness is *for*; the thing it actually runs and grades is that single call, and the `buggy:*` fixtures are plain, network-free functions. Plug in a genuinely agentic tool-loop behind the same interface and the harness still applies — it only grades the state diff.
+
 ## Quick start (no API key needed)
 
 ```bash
