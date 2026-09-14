@@ -104,6 +104,10 @@ OPENAI_API_KEY=sk-... npm run demo:browser -- --agent llm:gpt-4o --provider open
 
 **A real LLM can drive the same loop.** `--agent llm:<model>` runs a genuine multi-turn agent (`src/browser/browserLLM.ts`): each turn it reads the live state back from the DOM, decides tool calls, we actuate them on the page, and it re-observes, until it finishes. The verdict is still computed from the DOM the model actually left behind, not from the tool calls it claims — so a real model that says "done" and clicks nothing is caught exactly like the fixture. `test/browser.test.ts` launches Chromium and pins all of it offline: a real click changes the read-back state, the deterministic ghost is caught, and an injected fake LLM client exercises the real multi-turn loop (both a model that clicks through and a model that only claims success).
 
+**Measured with a real model.** Driving the console with **gpt-4o**, the agent scores **100/100 (8/8)** on the synthetic scenarios — it offboards the departed user, applies least privilege, asks instead of guessing on the ambiguous request, and refuses the dangerous global-admin grant, all through the UI, graded from the DOM:
+
+![gpt-4o offboarding a departed employee by operating the real admin console](docs/browser-demo-llm.gif)
+
 ## What it measures
 
 Per scenario, against ground truth:
