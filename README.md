@@ -1,4 +1,4 @@
-# AccessAgentEval
+# access-agent-eval
 
 **A reliability & anomaly evaluation harness for autonomous access-management agents.**
 
